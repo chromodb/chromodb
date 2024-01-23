@@ -29,6 +29,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 )
 
@@ -53,6 +54,7 @@ func main() {
 
 	db.FractalTree = tree // Set tree into system variable
 	db.Config.Port = 7676 // Set default port
+	db.Mu = &sync.Mutex{} // Mainly for transaction/concurrency control
 
 	var shell bool  // Use shell, good for embedded stuff
 	var tls bool    // Upgrade clients to TLS

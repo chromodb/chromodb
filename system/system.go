@@ -45,6 +45,7 @@ type Database struct {
 	Wg                 *sync.WaitGroup            // System waitgroup
 	Config             Config                     // ChromoDB configurations
 	DBUser             DBUser                     // Database user
+	Mu                 *sync.Mutex
 }
 
 // DBUser is a database user
@@ -91,40 +92,51 @@ func (db *Database) QueryParser(query []byte) (interface{}, error) {
 	case bytes.HasPrefix(bytes.ToUpper(query), []byte("MEM")):
 		return []byte(fmt.Sprintf("Current memory usage: %d bytes", db.CurrentMemoryUsage)), nil
 	case bytes.HasPrefix(bytes.ToUpper(query), []byte("PUT")):
+		db.StartTransaction()
 		opSpl := bytes.Split(query, []byte("->"))
 
 		if len(opSpl) != 3 {
+			db.RollbackTransaction()
 			return nil, errors.New("bad sequence")
 		}
 
 		err := db.FractalTree.Put(bytes.TrimSpace(opSpl[1]), bytes.TrimSpace(opSpl[2]))
 		if err != nil {
+			db.RollbackTransaction()
 			return nil, err
 		}
 
+		db.CommitTransaction()
 		return []byte("PUT SUCCESS"), nil
 	case bytes.HasPrefix(bytes.ToUpper(query), []byte("GET")):
+		db.StartTransaction()
 		opSpl := bytes.Split(query, []byte("->"))
 
 		if len(opSpl) < 2 {
+			db.RollbackTransaction()
 			return nil, errors.New("bad sequence")
 		}
 
 		res, err := db.FractalTree.Get(bytes.TrimSpace(opSpl[1]))
 		if err != nil {
+			db.RollbackTransaction()
 			return nil, err
 		}
 
+		db.CommitTransaction()
 		return res, nil
 	case bytes.HasPrefix(bytes.ToUpper(query), []byte("DEL")):
+		db.StartTransaction()
 		opSpl := bytes.Split(query, []byte("->"))
 
 		if len(opSpl) < 2 {
+			db.RollbackTransaction()
 			return nil, errors.New("bad sequence")
 		}
 
 		db.FractalTree.Delete(bytes.TrimSpace(opSpl[1]))
 
+		db.CommitTransaction()
 		return []byte("DEL SUCCESS"), nil
 	}
 
@@ -264,4 +276,19 @@ func (db *Database) Stop() {
 	// Wait for all active connections to finish
 	db.Wg.Wait()
 	fmt.Println("TCP/TLS listener stopped")
+}
+
+// StartTransaction locks to start a transaction
+func (db *Database) StartTransaction() {
+	db.Mu.Lock()
+}
+
+// RollbackTransaction unlocks on error
+func (db *Database) RollbackTransaction() {
+	db.Mu.Unlock()
+}
+
+// CommitTransaction similar to unlock but for commit
+func (db *Database) CommitTransaction() {
+	db.Mu.Unlock()
 }
