@@ -86,6 +86,10 @@ func main() {
 			os.Exit(1)
 		}
 
+		db.DBUser.Username = user
+		db.DBUser.Password = pass
+		// User is now set for listener
+
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
@@ -122,7 +126,7 @@ func main() {
 			if bytes.HasSuffix(query, []byte("exit")) {
 				fmt.Println("..\nbye!")
 				break
-			}
+			} // maybe not needed or unnecessary
 
 			// Execute the command
 			output, err := db.ExecuteCommand(query)

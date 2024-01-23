@@ -25,11 +25,14 @@ import (
 	"chromodb/datastructure"
 	"context"
 	"crypto/tls"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"net"
+	"net/textproto"
 	"os"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 )
@@ -41,6 +44,13 @@ type Database struct {
 	TCPListener        net.Listener               // TCPListener
 	Wg                 *sync.WaitGroup            // System waitgroup
 	Config             Config                     // ChromoDB configurations
+	DBUser             DBUser                     // Database user
+}
+
+// DBUser is a database user
+type DBUser struct {
+	Username string // database user username
+	Password string // database user password
 }
 
 // Config is the ChromoDB configurations struct
@@ -172,6 +182,33 @@ func (db *Database) StartTCPTLSListener(ctx context.Context) error {
 				}
 
 				// HANDLE AUTH
+				// We expect username\0password encoded in base64
+				auth := textproto.NewConn(conn)
+				defer auth.Close() // close textproto conn
+
+				toDecode, err := auth.ReadLine()
+				if err != nil {
+					fmt.Println("Auth textproto setup failure:", err)
+					return
+				}
+
+				decodeString, err := base64.StdEncoding.DecodeString(toDecode)
+				if err != nil {
+					conn.Write([]byte("Invalid authentication. Bye!\r\n"))
+					return
+				}
+
+				authSpl := strings.Split(string(decodeString), "\\0")
+
+				if db.DBUser.Username != authSpl[0] {
+					conn.Write([]byte("Invalid authentication. Bye!\r\n"))
+					return
+				}
+
+				if db.DBUser.Password != authSpl[1] {
+					conn.Write([]byte("Invalid authentication. Bye!\r\n"))
+					return
+				}
 
 				reader := bufio.NewReader(conn)
 

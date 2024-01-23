@@ -24,3 +24,4 @@ go.work
 # ChromoDB specific
 chromo.idx
 chromo.db
+chromodb

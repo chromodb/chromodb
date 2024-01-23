@@ -1,6 +1,7 @@
 <p align="center">
     <img width="248px" src="graphics/chromodb-logo.png" />
 </p>
+**************************************
 
 ChromoDB is a disk based key-value store implemented using a Fractal Tree-like data structure. It provides basic operations like inserting, updating, retrieving, and deleting key-value pairs. The database is designed to efficiently handle read and write operations with low latency.
 
