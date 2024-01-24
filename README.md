@@ -26,16 +26,16 @@ The database implementation is organized into a many Go packages with the follow
 
 ## File Storage
 The database stores its data in two separate files:
-- `Data File`: Contains the actual key-value pairs and their associated metadata.
-- `Index File`: Maintains an index of keys along with their corresponding offsets in the data file.
+- `Data File` Contains the actual key-value pairs and their associated metadata.
+- `Index File` Maintains an index of keys along with their corresponding offsets in the data file.
 
 ## Key-Value Storage Format
 The key-value pairs are stored in the data file using the following format:
-- Key Length: 4 bytes (uint32) - Length of the key in bytes.
-- Value Length: 4 bytes (uint32) - Length of the value in bytes.
-- Key: Variable-length byte array - The actual key data.
-- Value: Variable-length byte array - The actual value data.
-- Offset: 8 bytes (int64) - Offset of the next record in the data file.
+- `Key Length` 4 bytes (uint32) - Length of the key in bytes.
+- `Value Length` 4 bytes (uint32) - Length of the value in bytes.
+- `Key` Variable-length byte array - The actual key data.
+- `Value` Variable-length byte array - The actual value data.
+- `Offset` 8 bytes (int64) - Offset of the next record in the data file.
 
 ## Fractal Tree Data Structure
 The Fractal Tree is used to efficiently organize and access key-value pairs. It allows for fast lookup, insertion, and deletion operations with a balanced structure, ensuring a predictable and optimal performance.
