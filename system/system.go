@@ -125,6 +125,14 @@ func (db *Database) QueryParser(query []byte) (interface{}, error) {
 
 		db.CommitTransaction()
 		return res, nil
+
+	case bytes.HasPrefix(bytes.ToUpper(query), []byte("DISK")):
+		totalDiskSpace, err := getDiskSpace("chromo.db", "chromo.idx")
+		if err != nil {
+			return nil, err
+		}
+
+		return []byte(fmt.Sprintf("DISK USAGE: %d bytes", totalDiskSpace)), nil
 	case bytes.HasPrefix(bytes.ToUpper(query), []byte("DEL")):
 		db.StartTransaction()
 		opSpl := bytes.Split(query, []byte("->"))
@@ -265,6 +273,24 @@ func (db *Database) StartTCPTLSListener(ctx context.Context) error {
 	case <-ctx.Done():
 		return nil
 	}
+}
+
+// getDiskSpace gets combined disk space of provided files
+func getDiskSpace(filePaths ...string) (int64, error) {
+	var totalDiskSpace int64
+
+	for _, filePath := range filePaths {
+		// Get file information
+		fileInfo, err := os.Stat(filePath)
+		if err != nil {
+			return 0, err
+		}
+
+		// Add file size to total disk space
+		totalDiskSpace += fileInfo.Size()
+	}
+
+	return totalDiskSpace, nil
 }
 
 // Stop stops the TCP server
