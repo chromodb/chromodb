@@ -56,7 +56,7 @@ func main() {
 	db.Config.Port = 7676 // Set default port
 	db.Mu = &sync.Mutex{} // Mainly for transaction/concurrency control
 
-	var shell bool  // Use shell, good for embedded stuff
+	shell := true   // Use shell, good for embedded stuff
 	var tls bool    // Upgrade clients to TLS
 	var help bool   // Help show all flags
 	var user string // Database user for remote connections to use
@@ -134,11 +134,12 @@ func main() {
 			output, err := db.ExecuteCommand(query)
 			if err != nil {
 				fmt.Println("Error executing query:", err)
-				continue
+				fmt.Print("db>")
+			} else {
+				// Print the output of the command
+				fmt.Println(output)
+				fmt.Print("db>")
 			}
-
-			// Print the output of the command
-			fmt.Println(output)
 		}
 	}
 }

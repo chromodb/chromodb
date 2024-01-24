@@ -35,6 +35,7 @@ type FractalTree struct {
 }
 
 // Delete takes a provided key and deletes the entry
+// Delete takes a provided key and deletes the entry
 func (db *FractalTree) Delete(key []byte) error {
 	// Reset the offset of the index file to the beginning
 	_, err := db.indexFile.Seek(0, io.SeekStart)
@@ -48,7 +49,8 @@ func (db *FractalTree) Delete(key []byte) error {
 	for {
 		// Read key from the index file
 		indexKey := make([]byte, len(key))
-		if _, err := db.indexFile.Read(indexKey); err == io.EOF {
+		_, err := db.indexFile.Read(indexKey)
+		if err == io.EOF {
 			break
 		} else if err != nil {
 			return err
@@ -56,23 +58,39 @@ func (db *FractalTree) Delete(key []byte) error {
 
 		// Compare keys
 		if bytes.Equal(indexKey, key) {
-			// Read and discard the offset (we don't need it for deletion)
-			if _, err := db.indexFile.Seek(int64(binary.Size(int64(0))), io.SeekCurrent); err != nil {
+
+			// Read and discard the offset
+			var offset int64
+			if err := binary.Read(db.indexFile, binary.LittleEndian, &offset); err != nil {
 				return err
 			}
 
-			// Skip the data record in the data file
-			var keyLength, valueLength uint32
+			// Seek to the corresponding offset in the data file
+			_, err := db.dataFile.Seek(offset, io.SeekStart)
+			if err != nil {
+				return err
+			}
+
+			// Read the key length
+			var keyLength uint32
 			if err := binary.Read(db.dataFile, binary.LittleEndian, &keyLength); err != nil {
 				return err
 			}
+
+			// Read the value length
+			var valueLength uint32
 			if err := binary.Read(db.dataFile, binary.LittleEndian, &valueLength); err != nil {
 				return err
 			}
+
+			// Calculate the size of the data record
 			dataRecordSize := int64(binary.Size(keyLength)) + int64(binary.Size(valueLength)) + int64(keyLength) + int64(valueLength) + int64(binary.Size(int64(0)))
+
+			// Skip the data record in the data file
 			if _, err := db.dataFile.Seek(dataRecordSize, io.SeekCurrent); err != nil {
 				return err
 			}
+
 		} else {
 			// Write the key to the updated index buffer
 			if _, err := updatedIndexBuffer.Write(indexKey); err != nil {

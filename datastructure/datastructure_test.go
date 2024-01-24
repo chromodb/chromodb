@@ -28,8 +28,6 @@ func TestFractalTree_PutAndGet(t *testing.T) {
 	// Create a temporary directory for test files
 	tempDir := os.TempDir()
 
-	defer os.RemoveAll(tempDir)
-
 	// Initialize FractalTree
 	db, err := OpenFractalTree(tempDir+"/chromo.db", tempDir+"/chromo.idx")
 	if err != nil {
