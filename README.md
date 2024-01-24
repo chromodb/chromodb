@@ -73,7 +73,7 @@ MEM
 Shows current database memory usage.
 
 
-### DISK (SOON)
+### DISK
 ```
 DISK
 ```
