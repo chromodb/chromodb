@@ -1,9 +1,8 @@
 <p align="center">
     <img width="248px" src="graphics/chromodb-logo.png" />
 </p>
-**************************************
 
-ChromoDB is a disk based key-value store implemented using a Fractal Tree-like data structure. It provides basic operations like inserting, updating, retrieving, and deleting key-value pairs. The database is designed to efficiently handle read and write operations with low latency.
+ChromoDB is a disk based key-value store. It provides basic operations like inserting, updating, retrieving, and deleting key-value pairs. The database is designed to efficiently handle read and write operations.
 
 If using networked configuration the default port is 7676 on TCP OR TLS can be changed with --port flag.
 
@@ -36,9 +35,6 @@ The key-value pairs are stored in the data file using the following format:
 - `Key` Variable-length byte array - The actual key data.
 - `Value` Variable-length byte array - The actual value data.
 - `Offset` 8 bytes (int64) - Offset of the next record in the data file.
-
-## Fractal Tree Data Structure
-The Fractal Tree is used to efficiently organize and access key-value pairs. It allows for fast lookup, insertion, and deletion operations with a balanced structure, ensuring a predictable and optimal performance.
 
 ## Query Parser
 Additionally, a queryparser package is provided to interact with the database using simple queries. The QueryParser function accepts a query in the form of a byte slice and performs the corresponding database operation based on the query type (PUT, GET, DEL).
