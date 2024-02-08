@@ -2,26 +2,26 @@
     <img width="248px" src="graphics/chromodb-logo.png" />
 </p>
 
-ChromoDB is a disk based key-value store. It provides basic operations like inserting, updating, retrieving, and deleting key-value pairs. The database is designed to efficiently handle read and write operations.
+ChromoDB is a disk based key-value store. It provides basic operations like inserting, updating, retrieving, and deleting key-value pairs. The database is designed to efficiently handle read and write operations.  ChromoDB combines aspects of both a hash map (for indexing) and a linked list (for storing data records), resulting in a file-based key-value store.
 
 If using networked configuration the default port is 7676 on TCP OR TLS can be changed with --port flag.
 
 ## Structure
 The database implementation is organized into a many Go packages with the following main components:
 
-- `FractalTree` The central struct representing the database. It includes fields for data and index file handles, as well as the next available offset for storing new data records.
+- `DataStructure` The central struct representing the database. It includes fields for data and index file handles, as well as the next available offset for storing new data records.
 
-- `OpenFractalTree` A function to open or create a new FractalTree instance. It takes the filenames for the data and index files and returns a FractalTree object.
+- `DataStructure.OpenDB` A function to open or create a new FractalTree instance. It takes the filenames for the data and index files and returns a FractalTree object.
 
-- `Close` A method to close the FractalTree database, ensuring proper cleanup and closing of file handles.
+- `DataStructure.Close` A method to close the FractalTree database, ensuring proper cleanup and closing of file handles.
 
-- `Put` A method to insert or update a key-value pair in the database.
+- `DataStructure.Put` A method to insert or update a key-value pair in the database.
 
-- `Get` A method to retrieve the value associated with a given key.
+- `DataStructure.Get` A method to retrieve the value associated with a given key.
 
-- `Update` A method to update the value associated with a given key.
+- `DataStructure.Update` A method to update the value associated with a given key.
 
-- `Delete` A method to delete a key-value pair from the database.
+- `DataStructure.Delete` A method to delete a key-value pair from the database.
 
 ## File Storage
 The database stores its data in two separate files:
