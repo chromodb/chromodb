@@ -24,12 +24,12 @@ import (
 	"testing"
 )
 
-func TestFractalTree_PutAndGet(t *testing.T) {
+func TestDataStructure_PutAndGet(t *testing.T) {
 	// Create a temporary directory for test files
 	tempDir := os.TempDir()
 
-	// Initialize FractalTree
-	db, err := OpenFractalTree(tempDir+"/chromo.db", tempDir+"/chromo.idx")
+	// Initialize DB
+	db, err := OpenDB(tempDir+"/chromo.db", tempDir+"/chromo.idx")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,12 +57,12 @@ func TestFractalTree_PutAndGet(t *testing.T) {
 	}
 }
 
-func TestFractalTree_PutAndDeleteAndGet(t *testing.T) {
+func TestDataStructure_PutAndDeleteAndGet(t *testing.T) {
 	// Create a temporary directory for test files
 	tempDir := os.TempDir()
 
-	// Initialize FractalTree
-	db, err := OpenFractalTree(tempDir+"/chromo.db", tempDir+"/chromo.idx")
+	// Initialize DB
+	db, err := OpenDB(tempDir+"/chromo.db", tempDir+"/chromo.idx")
 	if err != nil {
 		t.Fatal(err)
 	}
