@@ -39,7 +39,7 @@ import (
 
 // Database is the ChromoDB main struct
 type Database struct {
-	FractalTree        *datastructure.FractalTree // Database tree
+	DataStructure      *datastructure.DataStructure // Database tree
 	CurrentMemoryUsage int                        // Current memory usage in bytes
 	TCPListener        net.Listener               // TCPListener
 	Wg                 *sync.WaitGroup            // System waitgroup
@@ -100,7 +100,7 @@ func (db *Database) QueryParser(query []byte) (interface{}, error) {
 			return nil, errors.New("bad sequence")
 		}
 
-		err := db.FractalTree.Put(bytes.TrimSpace(opSpl[1]), bytes.TrimSpace(opSpl[2]))
+		err := db.DataStructure.Put(bytes.TrimSpace(opSpl[1]), bytes.TrimSpace(opSpl[2]))
 		if err != nil {
 			db.RollbackTransaction()
 			return nil, err
@@ -117,7 +117,7 @@ func (db *Database) QueryParser(query []byte) (interface{}, error) {
 			return nil, errors.New("bad sequence")
 		}
 
-		res, err := db.FractalTree.Get(bytes.TrimSpace(opSpl[1]))
+		res, err := db.DataStructure.Get(bytes.TrimSpace(opSpl[1]))
 		if err != nil {
 			db.RollbackTransaction()
 			return nil, err
@@ -142,7 +142,7 @@ func (db *Database) QueryParser(query []byte) (interface{}, error) {
 			return nil, errors.New("bad sequence")
 		}
 
-		db.FractalTree.Delete(bytes.TrimSpace(opSpl[1]))
+		db.DataStructure.Delete(bytes.TrimSpace(opSpl[1]))
 
 		db.CommitTransaction()
 		return []byte("DEL SUCCESS"), nil
