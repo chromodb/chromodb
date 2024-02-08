@@ -27,16 +27,15 @@ import (
 	"os"
 )
 
-// FractalTree represents a Fractal Tree-like data structure for the ChromoDB
-type FractalTree struct {
+// DataStructure represents a the database structure
+type DataStructure struct {
 	dataFile   *os.File
 	indexFile  *os.File
 	nextOffset int64
 }
 
 // Delete takes a provided key and deletes the entry
-// Delete takes a provided key and deletes the entry
-func (db *FractalTree) Delete(key []byte) error {
+func (db *DataStructure) Delete(key []byte) error {
 	// Reset the offset of the index file to the beginning
 	_, err := db.indexFile.Seek(0, io.SeekStart)
 	if err != nil {
@@ -121,8 +120,8 @@ func (db *FractalTree) Delete(key []byte) error {
 	return nil
 }
 
-// OpenFractalTree opens or creates a FractalTree
-func OpenFractalTree(dataFilename, indexFilename string) (*FractalTree, error) {
+// OpenDB opens or creates a DataStructure bassed DB
+func OpenDB(dataFilename, indexFilename string) (*DataStructure, error) {
 	dataFile, err := os.OpenFile(dataFilename, os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
 		return nil, err
@@ -140,15 +139,15 @@ func OpenFractalTree(dataFilename, indexFilename string) (*FractalTree, error) {
 	}
 	nextOffset := dataFileInfo.Size()
 
-	return &FractalTree{
+	return &DataStructure{
 		dataFile:   dataFile,
 		indexFile:  indexFile,
 		nextOffset: nextOffset,
 	}, nil
 }
 
-// Close closes the FractalTree
-func (db *FractalTree) Close() error {
+// Close closes the DB
+func (db *DataStructure) Close() error {
 	if err := db.dataFile.Close(); err != nil {
 		return err
 	}
@@ -157,7 +156,7 @@ func (db *FractalTree) Close() error {
 
 // Put is like insert & update.  Will create a key-value but will replace an existing
 // if key already exists
-func (db *FractalTree) Put(key, value []byte) error {
+func (db *DataStructure) Put(key, value []byte) error {
 	// Reset the offset of the index file to the beginning
 	_, err := db.indexFile.Seek(0, io.SeekStart)
 	if err != nil {
@@ -232,7 +231,7 @@ func (db *FractalTree) Put(key, value []byte) error {
 }
 
 // writeDataRecord writes a key-value record to the specified data file at the specified offset
-func (db *FractalTree) writeDataRecord(dataFile io.Writer, offset int64, key, value []byte) error {
+func (db *DataStructure) writeDataRecord(dataFile io.Writer, offset int64, key, value []byte) error {
 	// Write key length
 	if err := binary.Write(dataFile, binary.LittleEndian, uint32(len(key))); err != nil {
 		return err
@@ -262,7 +261,7 @@ func (db *FractalTree) writeDataRecord(dataFile io.Writer, offset int64, key, va
 }
 
 // Get retrieves the value associated with a key
-func (db *FractalTree) Get(key []byte) ([]byte, error) {
+func (db *DataStructure) Get(key []byte) ([]byte, error) {
 	// Reset the offset of the index file to the beginning
 	_, err := db.indexFile.Seek(0, io.SeekStart)
 	if err != nil {
