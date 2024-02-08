@@ -35,8 +35,8 @@ func TestDatabase_ExecuteCommand(t *testing.T) {
 	// Create a temporary directory for test files
 	tempDir := os.TempDir()
 
-	// Initialize a FractalTree for the Database
-	db, err := datastructure.OpenFractalTree(tempDir+"/chromo.db", tempDir+"/chromo.idx")
+	// Initialize a DS for the Database
+	db, err := datastructure.OpenDB(tempDir+"/chromo.db", tempDir+"/chromo.idx")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +44,7 @@ func TestDatabase_ExecuteCommand(t *testing.T) {
 
 	// Create a Database instance
 	database := &Database{
-		FractalTree: db,
+		DataStructure: db,
 		Config: Config{
 			MemoryLimit: 750,
 			Port:        7676,
@@ -57,7 +57,7 @@ func TestDatabase_ExecuteCommand(t *testing.T) {
 	}
 
 	// Put a key-value pair in the database
-	err = database.FractalTree.Put([]byte("test_key"), []byte("test_value"))
+	err = database.DataStructure.Put([]byte("test_key"), []byte("test_value"))
 	if err != nil {
 		t.Fatalf("Error putting key-value pair: %v", err)
 	}
@@ -79,8 +79,8 @@ func TestDatabase_StartTCPTLSListener(t *testing.T) {
 	// Create a temporary directory for test files
 	tempDir := os.TempDir()
 
-	// Initialize a FractalTree for the Database
-	db, err := datastructure.OpenFractalTree(tempDir+"/chromo.db", tempDir+"/chromo.idx")
+	// Initialize a DS for the Database
+	db, err := datastructure.OpenDB(tempDir+"/chromo.db", tempDir+"/chromo.idx")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +88,7 @@ func TestDatabase_StartTCPTLSListener(t *testing.T) {
 
 	// Create a Database instance
 	database := &Database{
-		FractalTree: db,
+		DataStructure: db,
 		Config: Config{
 			MemoryLimit: 750,
 			Port:        7676,
