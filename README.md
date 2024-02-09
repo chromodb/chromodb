@@ -31,8 +31,30 @@ If using networked configuration the default port is 7676 on TCP OR TLS can be c
 
 ## Networked
 ```
-./chromodb --shell=false --user=alex --pasword=somepassword
+./chromodb --shell=false --user=alex --pass=somepassword
 ```
+
+#### Test with NC
+```
+base64 encode:
+alex\0somepassword
+
+YWxleFwwc29tZXBhc3N3b3Jk
+```
+
+Make sure to have ChromoDB started(networked of course)
+
+```
+nc localhost 7676
+```
+
+```
+~/chromodb$ nc localhost 7676
+YWxleFwwc29tZXBhc3N3b3Jk
+db>put->some key->some value
+db>get->some key
+```
+
 
 ### TLS
 ```
