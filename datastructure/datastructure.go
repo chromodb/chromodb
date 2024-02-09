@@ -36,88 +36,95 @@ type DataStructure struct {
 
 // Delete takes a provided key and deletes the entry
 func (db *DataStructure) Delete(key []byte) error {
-	// Reset the offset of the index file to the beginning
-	_, err := db.indexFile.Seek(0, io.SeekStart)
-	if err != nil {
-		return err
-	}
+    // Reset the offset of the index file to the beginning
+    _, err := db.indexFile.Seek(0, io.SeekStart)
+    if err != nil {
+        return err
+    }
 
-	// Initialize a buffer to store the updated index data
-	var updatedIndexBuffer bytes.Buffer
+    // Calculate the size of a single record in the index file
+    recordSize := len(key) + binary.Size(int64(0))
 
-	for {
-		// Read key from the index file
-		indexKey := make([]byte, len(key))
-		_, err := db.indexFile.Read(indexKey)
-		if err == io.EOF {
-			break
-		} else if err != nil {
-			return err
-		}
+    // Determine the total number of records in the index file
+    indexFileInfo, err := db.indexFile.Stat()
+    if err != nil {
+        return err
+    }
+    totalRecords := indexFileInfo.Size() / int64(recordSize)
 
-		// Compare keys
-		if bytes.Equal(indexKey, key) {
+    // Perform binary search to find the position of the key to be deleted
+    low, high := int64(0), totalRecords
+    for low < high {
+        mid := (low + high) / 2
 
-			// Read and discard the offset
-			var offset int64
-			if err := binary.Read(db.indexFile, binary.LittleEndian, &offset); err != nil {
-				return err
-			}
+        // Seek to the middle of the index file
+        offset := mid * int64(recordSize)
+        _, err := db.indexFile.Seek(offset, io.SeekStart)
+        if err != nil {
+            return err
+        }
 
-			// Seek to the corresponding offset in the data file
-			_, err := db.dataFile.Seek(offset, io.SeekStart)
-			if err != nil {
-				return err
-			}
+        // Read key from the index file
+        indexKey := make([]byte, len(key))
+        _, err = db.indexFile.Read(indexKey)
+        if err != nil && err != io.EOF {
+            return err
+        }
 
-			// Read the key length
-			var keyLength uint32
-			if err := binary.Read(db.dataFile, binary.LittleEndian, &keyLength); err != nil {
-				return err
-			}
+        // Compare keys
+        cmp := bytes.Compare(indexKey, key)
+        if cmp == 0 {
+            // Key found, delete the entry by shifting subsequent records
 
-			// Read the value length
-			var valueLength uint32
-			if err := binary.Read(db.dataFile, binary.LittleEndian, &valueLength); err != nil {
-				return err
-			}
+            // Calculate the size of the data record
+            var offset int64
+            if err := binary.Read(db.indexFile, binary.LittleEndian, &offset); err != nil {
+                return err
+            }
+            dataRecordSize := int64(binary.Size(uint32(len(key))) + binary.Size(uint32(0)) + len(key) + binary.Size(int64(0)))
 
-			// Calculate the size of the data record
-			dataRecordSize := int64(binary.Size(keyLength)) + int64(binary.Size(valueLength)) + int64(keyLength) + int64(valueLength) + int64(binary.Size(int64(0)))
+            // Shift subsequent records
+            var shiftedData []byte
+            if mid < totalRecords-1 {
+                shiftedDataSize := (totalRecords - mid - 1) * recordSize
+                shiftedData = make([]byte, shiftedDataSize)
+                _, err = db.indexFile.Read(shiftedData)
+                if err != nil && err != io.EOF {
+                    return err
+                }
 
-			// Skip the data record in the data file
-			if _, err := db.dataFile.Seek(dataRecordSize, io.SeekCurrent); err != nil {
-				return err
-			}
+                _, err = db.indexFile.Seek(-int64(len(shiftedData)), io.SeekCurrent)
+                if err != nil {
+                    return err
+                }
 
-		} else {
-			// Write the key to the updated index buffer
-			if _, err := updatedIndexBuffer.Write(indexKey); err != nil {
-				return err
-			}
+                _, err = db.indexFile.Write(shiftedData)
+                if err != nil {
+                    return err
+                }
+            }
 
-			// Read and write the offset to the updated index buffer
-			var offset int64
-			if err := binary.Read(db.indexFile, binary.LittleEndian, &offset); err != nil {
-				return err
-			}
-			if err := binary.Write(&updatedIndexBuffer, binary.LittleEndian, offset); err != nil {
-				return err
-			}
-		}
-	}
+            // Truncate the index file to remove the deleted key
+            err := db.indexFile.Truncate(indexFileInfo.Size() - recordSize)
+            if err != nil {
+                return err
+            }
 
-	// Truncate the index file to remove the deleted key
-	if err := db.indexFile.Truncate(0); err != nil {
-		return err
-	}
+            // Update the nextOffset
+            db.nextOffset -= dataRecordSize
 
-	// Write the updated index data to the index file
-	if _, err := db.indexFile.Write(updatedIndexBuffer.Bytes()); err != nil {
-		return err
-	}
+            return nil
+        } else if cmp < 0 {
+            // Key may be in the upper half
+            low = mid + 1
+        } else {
+            // Key may be in the lower half
+            high = mid
+        }
+    }
 
-	return nil
+    // Key not found
+    return fmt.Errorf("key not found")
 }
 
 // OpenDB opens or creates a DataStructure bassed DB
@@ -157,78 +164,115 @@ func (db *DataStructure) Close() error {
 // Put is like insert & update.  Will create a key-value but will replace an existing
 // if key already exists
 func (db *DataStructure) Put(key, value []byte) error {
-	// Reset the offset of the index file to the beginning
-	_, err := db.indexFile.Seek(0, io.SeekStart)
-	if err != nil {
-		return err
-	}
+    // Reset the offset of the index file to the beginning
+    _, err := db.indexFile.Seek(0, io.SeekStart)
+    if err != nil {
+        return err
+    }
 
-	// Check if the key already exists
-	for {
-		// Read key from the index file
-		indexKey := make([]byte, len(key))
-		if _, err := db.indexFile.Read(indexKey); err == io.EOF {
-			break
-		} else if err != nil {
-			return err
-		}
+    // Calculate the size of a single record in the index file
+    recordSize := len(key) + binary.Size(int64(0))
 
-		// Compare keys
-		if bytes.Equal(indexKey, key) {
-			// Key already exists, update the value
+    // Determine the total number of records in the index file
+    indexFileInfo, err := db.indexFile.Stat()
+    if err != nil {
+        return err
+    }
+    totalRecords := indexFileInfo.Size() / int64(recordSize)
 
-			// Read offset from the index file
-			var offset int64
-			if err := binary.Read(db.indexFile, binary.LittleEndian, &offset); err != nil {
-				return err
-			}
+    // Perform binary search to find the correct position for the new key
+    low, high := int64(0), totalRecords
+    for low < high {
+        mid := (low + high) / 2
 
-			// Seek to the corresponding offset in the data file
-			_, err := db.dataFile.Seek(offset, io.SeekStart)
-			if err != nil {
-				return err
-			}
+        // Seek to the middle of the index file
+        offset := mid * int64(recordSize)
+        _, err := db.indexFile.Seek(offset, io.SeekStart)
+        if err != nil {
+            return err
+        }
 
-			// Update the value in the data file
-			if err := db.writeDataRecord(db.dataFile, offset, key, value); err != nil {
-				return err
-			}
+        // Read key from the index file
+        indexKey := make([]byte, len(key))
+        _, err = db.indexFile.Read(indexKey)
+        if err != nil && err != io.EOF {
+            return err
+        }
 
-			return nil
-		}
+        // Compare keys
+        cmp := bytes.Compare(indexKey, key)
+        if cmp == 0 {
+            // Key already exists, update the value
 
-		// Read and discard the offset (we don't need it for lookup)
-		if _, err := db.indexFile.Seek(int64(binary.Size(int64(0))), io.SeekCurrent); err != nil {
-			return err
-		}
-	}
+            // Read and discard the offset
+            var existingOffset int64
+            if err := binary.Read(db.indexFile, binary.LittleEndian, &existingOffset); err != nil {
+                return err
+            }
 
-	// Key does not exist, proceed with adding the new key-value pair
+            // Update the value in the data file
+            if err := db.writeDataRecord(db.dataFile, existingOffset, key, value); err != nil {
+                return err
+            }
 
-	// Write key to the index file
-	if _, err := db.indexFile.Write(key); err != nil {
-		return err
-	}
+            return nil
+        } else if cmp < 0 {
+            // Key may be in the upper half
+            low = mid + 1
+        } else {
+            // Key may be in the lower half
+            high = mid
+        }
+    }
 
-	// Get the current offset in the data file
-	offset, err := db.dataFile.Seek(0, io.SeekEnd)
-	if err != nil {
-		return err
-	}
+    // At this point, 'low' indicates the position where the new key should be inserted
 
-	// Write offset to the index file
-	if err := binary.Write(db.indexFile, binary.LittleEndian, offset); err != nil {
-		return err
-	}
+    // Seek to the correct position in the index file for insertion
+    offset := low * int64(recordSize)
+    _, err = db.indexFile.Seek(offset, io.SeekStart)
+    if err != nil {
+        return err
+    }
 
-	// Write key-value pair to the data file
-	// (using the offset obtained before writing to the index file)
-	if err := db.writeDataRecord(db.dataFile, offset, key, value); err != nil {
-		return err
-	}
+    // Shift the subsequent records to make space for the new key
+    var shiftedData []byte
+    if low < totalRecords {
+        shiftedData = make([]byte, (totalRecords-low)*recordSize)
+        _, err = db.indexFile.Read(shiftedData)
+        if err != nil && err != io.EOF {
+            return err
+        }
 
-	return nil
+        _, err = db.indexFile.Seek(-int64(len(shiftedData)), io.SeekCurrent)
+        if err != nil {
+            return err
+        }
+
+        _, err = db.indexFile.Write(shiftedData)
+        if err != nil {
+            return err
+        }
+    }
+
+    // Write the new key and offset to the index file
+    if _, err := db.indexFile.Write(key); err != nil {
+        return err
+    }
+    if err := binary.Write(db.indexFile, binary.LittleEndian, db.nextOffset); err != nil {
+        return err
+    }
+
+    // Update the nextOffset
+    db.nextOffset += int64(binary.Size(uint32(len(key))) + binary.Size(uint32(len(value))) + len(key) + len(value) + binary.Size(int64(0)))
+
+    // Write key-value pair to the data file
+    if err := db.writeDataRecord(db.dataFile, db.nextOffset-int64(len(key))-int64(len(value))-binary.Size(int64(0)), key, value); err != nil {
+        return err
+    }
+
+    return nil
 }
+
 
 // writeDataRecord writes a key-value record to the specified data file at the specified offset
 func (db *DataStructure) writeDataRecord(dataFile io.Writer, offset int64, key, value []byte) error {
@@ -262,68 +306,74 @@ func (db *DataStructure) writeDataRecord(dataFile io.Writer, offset int64, key, 
 
 // Get retrieves the value associated with a key
 func (db *DataStructure) Get(key []byte) ([]byte, error) {
-	// Reset the offset of the index file to the beginning
-	_, err := db.indexFile.Seek(0, io.SeekStart)
-	if err != nil {
-		return nil, err
-	}
+    // Reset the offset of the index file to the beginning
+    _, err := db.indexFile.Seek(0, io.SeekStart)
+    if err != nil {
+        return nil, err
+    }
 
-	for {
-		// Read key from the index file
-		indexKey := make([]byte, len(key))
-		if _, err := db.indexFile.Read(indexKey); err == io.EOF {
-			break
-		} else if err != nil {
-			return nil, err
-		}
+    // Determine the size of a single record in the index file
+    recordSize := len(key) + binary.Size(int64(0))
 
-		// Compare keys
-		if bytes.Equal(indexKey, key) {
-			// Read offset from the index file
-			var offset int64
-			if err := binary.Read(db.indexFile, binary.LittleEndian, &offset); err != nil {
-				return nil, err
-			}
+    // Determine the total number of records in the index file
+    indexFileInfo, err := db.indexFile.Stat()
+    if err != nil {
+        return nil, err
+    }
+    totalRecords := indexFileInfo.Size() / int64(recordSize)
 
-			// Seek to the corresponding offset in the data file
-			_, err := db.dataFile.Seek(offset, io.SeekStart)
-			if err != nil {
-				return nil, err
-			}
+    // Perform binary search
+    low, high := int64(0), totalRecords-1
+    for low <= high {
+        mid := (low + high) / 2
 
-			// Read the key length
-			var keyLength uint32
-			if err := binary.Read(db.dataFile, binary.LittleEndian, &keyLength); err != nil {
-				return nil, err
-			}
+        // Seek to the middle of the index file
+        offset := mid * int64(recordSize)
+        _, err := db.indexFile.Seek(offset, io.SeekStart)
+        if err != nil {
+            return nil, err
+        }
 
-			// Read the value length
-			var valueLength uint32
-			if err := binary.Read(db.dataFile, binary.LittleEndian, &valueLength); err != nil {
-				return nil, err
-			}
+        // Read key from the index file
+        indexKey := make([]byte, len(key))
+        _, err = db.indexFile.Read(indexKey)
+        if err != nil {
+            return nil, err
+        }
 
-			// Read the key
-			keyData := make([]byte, keyLength)
-			if _, err := db.dataFile.Read(keyData); err != nil {
-				return nil, err
-			}
+        // Compare keys
+        cmp := bytes.Compare(indexKey, key)
+        if cmp == 0 {
+            // Key found, read offset and retrieve value from data file
+            var offset int64
+            if err := binary.Read(db.indexFile, binary.LittleEndian, &offset); err != nil {
+                return nil, err
+            }
+            _, err := db.dataFile.Seek(offset, io.SeekStart)
+            if err != nil {
+                return nil, err
+            }
 
-			// Read the value
-			valueData := make([]byte, valueLength)
-			if _, err := db.dataFile.Read(valueData); err != nil {
-				return nil, err
-			}
+            // Read value from data file
+            var valueLength uint32
+            if err := binary.Read(db.dataFile, binary.LittleEndian, &valueLength); err != nil {
+                return nil, err
+            }
+            valueData := make([]byte, valueLength)
+            if _, err := db.dataFile.Read(valueData); err != nil {
+                return nil, err
+            }
 
-			return valueData, nil
-		}
+            return valueData, nil
+        } else if cmp < 0 {
+            // Key may be in the upper half
+            low = mid + 1
+        } else {
+            // Key may be in the lower half
+            high = mid - 1
+        }
+    }
 
-		// Read and discard the offset (we don't need it for lookup)
-		if _, err := db.indexFile.Seek(int64(binary.Size(int64(0))), io.SeekCurrent); err != nil {
-			return nil, err
-		}
-	}
-
-	// Key not found
-	return nil, fmt.Errorf("key not found")
+    // Key not found
+    return nil, fmt.Errorf("key not found")
 }
