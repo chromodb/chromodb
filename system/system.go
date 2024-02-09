@@ -40,11 +40,11 @@ import (
 // Database is the ChromoDB main struct
 type Database struct {
 	DataStructure      *datastructure.DataStructure // Database tree
-	CurrentMemoryUsage int                        // Current memory usage in bytes
-	TCPListener        net.Listener               // TCPListener
-	Wg                 *sync.WaitGroup            // System waitgroup
-	Config             Config                     // ChromoDB configurations
-	DBUser             DBUser                     // Database user
+	CurrentMemoryUsage int                          // Current memory usage in bytes
+	TCPListener        net.Listener                 // TCPListener
+	Wg                 *sync.WaitGroup              // System waitgroup
+	Config             Config                       // ChromoDB configurations
+	DBUser             DBUser                       // Database user
 	Mu                 *sync.Mutex
 }
 
@@ -229,6 +229,8 @@ func (db *Database) StartTCPTLSListener(ctx context.Context) error {
 					conn.Write([]byte("Invalid authentication. Bye!\r\n"))
 					return
 				}
+
+				conn.Write([]byte("AUTH OK\r\n"))
 
 				reader := bufio.NewReader(conn)
 

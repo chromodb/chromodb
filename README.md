@@ -50,7 +50,7 @@ db>get->some key
 
 ### TLS
 ```
-./chromodb --shell=false --user=alex --pasword=somepassword --tls=true --key="key.pem" --cert="cert.pem"
+./chromodb --shell=false --user=alex --pass=somepassword --tls=true --key="key.pem" --cert="cert.pem"
 ```
 
 ## Structure
