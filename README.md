@@ -133,3 +133,7 @@ Shows current database memory usage.
 DISK
 ```
 Shows current database disk usage
+
+
+### Limitations
+- keys cannot have spaces
