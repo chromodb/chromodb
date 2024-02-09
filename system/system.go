@@ -46,6 +46,7 @@ type Database struct {
 	Config             Config                       // ChromoDB configurations
 	DBUser             DBUser                       // Database user
 	Mu                 *sync.Mutex
+	ConnMu             *sync.Mutex
 	Connections        map[net.Addr]net.Conn
 }
 
@@ -167,6 +168,7 @@ func (db *Database) StartTCPTLSListener(ctx context.Context) error {
 	db.TCPListener = listener
 
 	db.Connections = make(map[net.Addr]net.Conn)
+	db.ConnMu = &sync.Mutex{}
 
 	go func() {
 		for {
@@ -187,7 +189,11 @@ func (db *Database) StartTCPTLSListener(ctx context.Context) error {
 			go func(c net.Conn) {
 				defer db.Wg.Done()
 				defer c.Close()
-				defer delete(db.Connections, conn.RemoteAddr())
+				defer (func() {
+					db.ConnMu.Lock()
+					delete(db.Connections, conn.RemoteAddr())
+					db.ConnMu.Unlock()
+				})()
 
 				if db.Config.TLS {
 					cert, err := tls.LoadX509KeyPair(db.Config.TLSCert, db.Config.TLSKey)
@@ -240,7 +246,9 @@ func (db *Database) StartTCPTLSListener(ctx context.Context) error {
 
 				conn.Write([]byte("AUTH OK\r\n"))
 
+				db.ConnMu.Lock()
 				db.Connections[conn.RemoteAddr()] = conn
+				db.ConnMu.Unlock()
 
 				reader := bufio.NewReader(conn)
 
@@ -312,12 +320,12 @@ func (db *Database) Stop() {
 		_ = db.TCPListener.Close()
 	}
 	// Wait for all active connections to finish
-	db.Wg.Wait()
-
 	for _, c := range db.Connections {
 		c.Close()
 		delete(db.Connections, c.RemoteAddr())
 	}
+
+	db.Wg.Wait()
 
 	fmt.Println("TCP/TLS listener stopped")
 }

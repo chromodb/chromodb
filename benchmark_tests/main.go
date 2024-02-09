@@ -297,6 +297,70 @@ func testConsistencyAfter() {
 	conn.Close()
 }
 
+// Inserts large key value
+func insertLargeKeyValue() {
+	// Single connection
+	tcpAddr, err := net.ResolveTCPAddr("tcp", "localhost:7676")
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	// Connect to the address with tcp
+	conn, err := net.DialTCP("tcp", nil, tcpAddr)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	// Send a message to the ChromoDB running instance
+	_, err = conn.Write([]byte("YWxleFwwc29tZXBhc3N3b3Jk\n")) // we are using a user of alex and password of somepassword
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	_, err = bufio.NewReader(conn).ReadString('\n')
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	var testVal []byte
+
+	for i := 0; i < 1000; i++ {
+		testVal = append(testVal, byte(i))
+	}
+
+	_, err = conn.Write([]byte(fmt.Sprintf("put->long_key_name_test->%v\n", testVal)))
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	_, err = bufio.NewReader(conn).ReadString('\n')
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	_, err = conn.Write([]byte("get->long_key_name_test\n")) // we are using a user of alex and password of somepassword
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	res, err := bufio.NewReader(conn).ReadString('\n')
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println(res)
+
+	conn.Close()
+}
+
 // Make sure you have a local database running
 func main() {
 
@@ -305,5 +369,6 @@ func main() {
 	insertSingleConnection()
 	testConsistency()
 	testConsistencyAfter() // should be 499
+	insertLargeKeyValue()
 
 }
