@@ -16,14 +16,6 @@ If using networked configuration the default port is 7676 on TCP OR TLS can be c
 ..
 ```
 
-## Use like embedded DB
-```
->./chromodb
-
->db>DISK
-..
-```
-
 ## Limit memory on start up
 ```
 ./chromodb --memory-limit=7500 * 1024 * 1024
