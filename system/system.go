@@ -46,6 +46,7 @@ type Database struct {
 	Config             Config                       // ChromoDB configurations
 	DBUser             DBUser                       // Database user
 	Mu                 *sync.Mutex
+	Connections        map[net.Addr]net.Conn
 }
 
 // DBUser is a database user
@@ -63,6 +64,7 @@ type Config struct {
 	TLSCert     string // if TLS is set where is TLS cert located?
 }
 
+// MonitorMemory monitors memory usage for database
 func (db *Database) MonitorMemory() {
 	ticker := time.NewTicker(time.Second * 5) // Check memory usage every 5 seconds
 
@@ -78,6 +80,7 @@ func (db *Database) MonitorMemory() {
 	}
 }
 
+// ExecuteCommand takes a query and executes it
 func (db *Database) ExecuteCommand(query []byte) (interface{}, error) {
 	res, err := db.QueryParser(query)
 	if err != nil {
@@ -87,6 +90,7 @@ func (db *Database) ExecuteCommand(query []byte) (interface{}, error) {
 	return res, nil
 }
 
+// QueryParser parses incoming query
 func (db *Database) QueryParser(query []byte) (interface{}, error) {
 	switch {
 	case bytes.HasPrefix(bytes.ToUpper(query), []byte("MEM")):
@@ -151,6 +155,7 @@ func (db *Database) QueryParser(query []byte) (interface{}, error) {
 	return nil, errors.New("nonexistent command")
 }
 
+// StartTCPTLSListener starts TCP/TLS listener
 func (db *Database) StartTCPTLSListener(ctx context.Context) error {
 	db.Wg = &sync.WaitGroup{}
 	addr := "0.0.0.0:7676" // is the default for ChromoDB
@@ -160,6 +165,8 @@ func (db *Database) StartTCPTLSListener(ctx context.Context) error {
 	}
 
 	db.TCPListener = listener
+
+	db.Connections = make(map[net.Addr]net.Conn)
 
 	go func() {
 		for {
@@ -180,6 +187,7 @@ func (db *Database) StartTCPTLSListener(ctx context.Context) error {
 			go func(c net.Conn) {
 				defer db.Wg.Done()
 				defer c.Close()
+				defer delete(db.Connections, conn.RemoteAddr())
 
 				if db.Config.TLS {
 					cert, err := tls.LoadX509KeyPair(db.Config.TLSCert, db.Config.TLSKey)
@@ -232,13 +240,15 @@ func (db *Database) StartTCPTLSListener(ctx context.Context) error {
 
 				conn.Write([]byte("AUTH OK\r\n"))
 
+				db.Connections[conn.RemoteAddr()] = conn
+
 				reader := bufio.NewReader(conn)
 
 				for {
+
 					// Read a line (until CRLF)
 					line, err := reader.ReadBytes('\n')
 					if err != nil {
-						fmt.Println("Error reading from connection:", err)
 						return
 					}
 
@@ -303,6 +313,12 @@ func (db *Database) Stop() {
 	}
 	// Wait for all active connections to finish
 	db.Wg.Wait()
+
+	for _, c := range db.Connections {
+		c.Close()
+		delete(db.Connections, c.RemoteAddr())
+	}
+
 	fmt.Println("TCP/TLS listener stopped")
 }
 
