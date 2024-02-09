@@ -27,7 +27,7 @@ import (
 	"os"
 )
 
-// DataStructure represents a the database structure
+// DataStructure represents the ChromoDB database structure
 type DataStructure struct {
 	dataFile   *os.File
 	indexFile  *os.File

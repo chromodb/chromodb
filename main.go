@@ -47,12 +47,12 @@ func main() {
 	go db.MonitorMemory() // This is for the MEM/mem command.  We check every 5 seconds
 
 	// Load database and index file
-	tree, err := datastructure.OpenFractalTree("chromo.db", "chromo.idx")
+	ds, err := datastructure.OpenDB("chromo.db", "chromo.idx")
 	if err != nil {
 		return
 	}
 
-	db.FractalTree = tree // Set tree into system variable
+	db.DataStructure = ds // Set ds into system variable
 	db.Config.Port = 7676 // Set default port
 	db.Mu = &sync.Mutex{} // Mainly for transaction/concurrency control
 
