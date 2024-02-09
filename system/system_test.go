@@ -27,6 +27,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"sync"
 	"testing"
 	"time"
 )
@@ -36,7 +37,7 @@ func TestDatabase_ExecuteCommand(t *testing.T) {
 	tempDir := os.TempDir()
 
 	// Initialize a DS for the Database
-	db, err := datastructure.OpenDB(tempDir+"/chromo.db", tempDir+"/chromo.idx")
+	db, err := datastructure.OpenDB(tempDir+"chromo.db", tempDir+"chromo.idx")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,6 +55,7 @@ func TestDatabase_ExecuteCommand(t *testing.T) {
 			Username: "testuser",
 			Password: "testpassword",
 		},
+		Mu: &sync.Mutex{},
 	}
 
 	// Put a key-value pair in the database
