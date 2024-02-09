@@ -20,7 +20,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-VERSION=v0.9.3
+VERSION=v0.9.4
 
 echo "🛠️ Building ChromoDB $VERSION multiplatform binaries!"
 
