@@ -87,7 +87,76 @@ func insertParallel() {
 	elapsed := time.Since(start)
 	fmt.Println("Fin")
 
-	log.Printf("ChromoDB took to insert 5000 keys with multiple connections: %s", elapsed)
+	log.Printf("ChromoDB took to insert 5000 keys with 5000 connections: %s", elapsed)
+}
+
+// Insert 5000 keys using 100 connections
+func insertParallel2() {
+	wg := &sync.WaitGroup{}
+	start := time.Now()
+
+	e := 0 // current entry
+	eMu := &sync.Mutex{}
+
+	for i := 0; i < 100; i++ {
+		wg.Add(1)
+		go func(j int) {
+			defer wg.Done()
+			// Resolve the string address to a TCP address
+			tcpAddr, err := net.ResolveTCPAddr("tcp", "localhost:7676")
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+
+			// Connect to the address with tcp
+			conn, err := net.DialTCP("tcp", nil, tcpAddr)
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+
+			// Send a message to the ChromoDB running instance
+			_, err = conn.Write([]byte("YWxleFwwc29tZXBhc3N3b3Jk\n")) // we are using a user of alex and password of somepassword
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+
+			_, err = bufio.NewReader(conn).ReadString('\n')
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+
+			for z := 0; z < 50; z++ {
+				eMu.Lock()
+				e += 1
+				eMu.Unlock()
+				_, err = conn.Write([]byte(fmt.Sprintf("PUT->key%d->value%d\n", e, e))) // we are using a user of alex and password of somepassword
+				if err != nil {
+					fmt.Println(err)
+					return
+				}
+			}
+
+			// Read from the connection untill a new line is send
+			_, err = bufio.NewReader(conn).ReadString('\n')
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+
+			conn.Close()
+		}(i)
+	}
+
+	wg.Wait()
+
+	elapsed := time.Since(start)
+	fmt.Println("Fin")
+
+	log.Printf("ChromoDB took to insert 5000 keys with 100 connections: %s", elapsed)
 }
 
 // Inserts 5000 keys linearly
@@ -232,6 +301,7 @@ func testConsistencyAfter() {
 func main() {
 
 	insertParallel()
+	insertParallel2()
 	insertSingleConnection()
 	testConsistency()
 	testConsistencyAfter() // should be 499
