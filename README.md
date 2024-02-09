@@ -2,13 +2,47 @@
     <img width="248px" src="graphics/chromodb-logo.png" />
 </p>
 
-ChromoDB is a disk based key-value store. It provides basic operations like inserting, updating, retrieving, and deleting key-value pairs. The database is designed to efficiently handle read and write operations.  ChromoDB combines aspects of both a hash map (for indexing) and a linked list (for storing data records), resulting in a file-based key-value store.
+ChromoDB is a disk based key-value store. It provides operations like inserting, updating, retrieving, and deleting key-value pairs. The database is designed to efficiently handle read and write operations.  ChromoDB combines aspects of both a hash map (for indexing) and a linked list (for storing data records), resulting in a file-based key-value store.
 
 If using networked configuration the default port is 7676 on TCP OR TLS can be changed with --port flag.
+
+## How to use
+
+## Use like embedded DB
+```
+>./chromodb
+
+>db>DISK
+..
+```
+
+## Use like embedded DB
+```
+>./chromodb
+
+>db>DISK
+..
+```
+
+## Limit memory on start up
+```
+./chromodb --memory-limit=7500 * 1024 * 1024
+```
+
+## Networked
+```
+./chromodb --shell=false --user=alex --pasword=somepassword
+```
+
+### TLS
+```
+./chromodb --shell=false --user=alex --pasword=somepassword --tls=true --key="key.pem" --cert="cert.pem"
+```
 
 ## Structure
 The database implementation is organized into a many Go packages with the following main components:
 
+### DataStructure
 - `DataStructure` The central struct representing the database. It includes fields for data and index file handles, as well as the next available offset for storing new data records.
 
 - `DataStructure.OpenDB` A function to open or create a new FractalTree instance. It takes the filenames for the data and index files and returns a FractalTree object.
@@ -22,6 +56,17 @@ The database implementation is organized into a many Go packages with the follow
 - `DataStructure.Update` A method to update the value associated with a given key.
 
 - `DataStructure.Delete` A method to delete a key-value pair from the database.
+### System
+- `System.MonitorMemory` Monitors current memory use
+- `System.ExecuteCommand` Executes a command
+- `System.QueryParser` Parses database queries
+- `System.StartTCPTLSListener` Starts TCP/TLS listener
+- `System.getDiskSpace` Gets current database disk usage
+- `System.Stop` Stops TCP/TLS listener gracefully
+- `System.StartTransaction` Starts DB transaction
+- `System.CommitTransaction` Commits DB transaction
+- `System.RollbackTransaction` Rolls back DB transaction
+
 
 ## File Storage
 The database stores its data in two separate files:
